@@ -3,6 +3,7 @@
 
 #include "BasicProceduralLandscape.h"
 #include "ProceduralMeshComponent.h"
+#include "KismetProceduralMeshLibrary.h"
 
 // Sets default values
 ABasicProceduralLandscape::ABasicProceduralLandscape()
@@ -19,13 +20,24 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 void ABasicProceduralLandscape::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	
+}
+
+void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
+{	//No longer need to run game, object loaded on construction script which is exectuted before game begins
+	//Clear old variables on construction
+	Vertices.Reset();
+	Triangles.Reset();
+	UV0.Reset();
 
 	CreateVertices();
 	CreateTriangles();
 
-	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, TArray<FVector>(), UV0, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
-	ProceduralMesh->SetMaterial(0, Material);
+	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 
+	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+	ProceduralMesh->SetMaterial(0, Material);
 	
 }
 

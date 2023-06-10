@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ProceduralMeshComponent.h"
 #include "BasicProceduralLandscape.generated.h"
 
 class UProceduralMeshComponent;
@@ -37,9 +38,12 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* Material;
+
+	
 
 public:	
 	// Called every frame
@@ -50,6 +54,8 @@ private:
 	TArray<FVector> Vertices;
 	TArray<int> Triangles;
 	TArray<FVector2D> UV0;
+	TArray<FVector> Normals;
+	TArray<struct  FProcMeshTangent> Tangents;
 
 	void CreateVertices();
 	void CreateTriangles();
