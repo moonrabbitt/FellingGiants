@@ -1,4 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
+//https://github.com/Fetiska/Unreal-Procedural-Terrain-Generation-CPP/blob/main/%232%20Landscape%20generation/Source/DiamondSquareCPP/Public/DiamondSquare.h
 
 #pragma once
 
