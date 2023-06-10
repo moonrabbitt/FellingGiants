@@ -41,8 +41,9 @@ void ABasicProceduralLandscape::CreateVertices()
 	for (int X = 0; X <= XSize; ++X)
 	{
 		for (int Y = 0; Y <= YSize; ++Y)
-		{
-			Vertices.Add(FVector(X * Scale, Y * Scale, FMath::RandRange(ZMin, ZMax)));
+		{	float Z = FMath::PerlinNoise2D(FVector2D(X + 0.1 , Y + 0.1)*NoiseScale) * ZMultiplier; // Perlin noise int always return same values
+			GEngine->AddOnScreenDebugMessage(-1,999.0f,FColor::Yellow,FString::Printf(TEXT("Z %f"),Z));
+			Vertices.Add(FVector(X * Scale, Y * Scale, Z ));
 			UV0.Add(FVector2D(X * UVScale, Y * UVScale));
 		}
 	}

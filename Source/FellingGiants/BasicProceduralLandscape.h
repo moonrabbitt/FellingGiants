@@ -23,11 +23,10 @@ public:
 	int XSize = 0;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
 	int YSize = 0;
-
-	UPROPERTY(EditAnywhere)
-	float ZMin = 0;
-	UPROPERTY(EditAnywhere)
-	float ZMax = 0;
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+	float ZMultiplier = 1.0f;
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+	float NoiseScale = 0.1f;
 
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.000001))
 	float Scale = 100.0f;
