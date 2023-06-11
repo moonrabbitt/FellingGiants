@@ -43,6 +43,8 @@ protected:
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* Material;
 
+	UPROPERTY(EditAnywhere)
+	UTexture2D* HeightmapTexture;
 	
 
 public:	

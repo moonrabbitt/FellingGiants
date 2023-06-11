@@ -50,15 +50,42 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 
 void ABasicProceduralLandscape::CreateVertices()
 {
+
+	if (HeightmapTexture == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Heightmap texture is null"));
+		return;
+	}
+
+	//Adapt height map size
+	float TextureSizeX = HeightmapTexture->GetSizeX();
+	float TextureSizeY = HeightmapTexture->GetSizeY();
+
+	// Fetch the underlying resource data of the texture. This is a low-level operation and should be done with care.
+	FTexturePlatformData* TexData = HeightmapTexture->GetPlatformData();
+	FTexture2DMipMap* MipMap = &TexData->Mips[0];
+	FByteBulkData* RawImageData = &MipMap->BulkData;
+	FColor* FormatedImageData = static_cast<FColor*>(RawImageData->Lock(LOCK_READ_ONLY));
+	int TextureWidth = MipMap->SizeX, TextureHeight = MipMap->SizeY;
+	
 	for (int X = 0; X <= XSize; ++X)
 	{
 		for (int Y = 0; Y <= YSize; ++Y)
-		{	float Z = FMath::PerlinNoise2D(FVector2D(X + 0.1 , Y + 0.1)*NoiseScale) * ZMultiplier; // Perlin noise int always return same values
-			GEngine->AddOnScreenDebugMessage(-1,999.0f,FColor::Yellow,FString::Printf(TEXT("Z %f"),Z));
+		{
+			int TextureX = FMath::Clamp(int(X * (TextureSizeX / XSize)), 0, TextureSizeX - 1);
+			int TextureY = FMath::Clamp(int(Y * (TextureSizeY / YSize)), 0, TextureSizeY - 1);
+
+			FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
+
+			float Z = PixelColor.R / 255.0f * ZMultiplier;// using R channel from heightmap
+			
+			//GEngine->AddOnScreenDebugMessage(-1,999.0f,FColor::Yellow,FString::Printf(TEXT("Z %f"),Z));
 			Vertices.Add(FVector(X * Scale, Y * Scale, Z ));
 			UV0.Add(FVector2D(X * UVScale, Y * UVScale));
 		}
 	}
+	// Unlock the mip level data now that we're done with it. It's important to always unlock any data you've locked as soon as you're done with it.
+	RawImageData->Unlock();
 }
 
 void ABasicProceduralLandscape::CreateTriangles()
