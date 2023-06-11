@@ -1,9 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
+#include "Engine/TextureRenderTarget2D.h"
 #include "BasicProceduralLandscape.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
+
 
 // Sets default values
 ABasicProceduralLandscape::ABasicProceduralLandscape()
@@ -13,6 +14,7 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 
 	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
 	ProceduralMesh->SetupAttachment(GetRootComponent());
+	
 
 }
 
@@ -31,13 +33,14 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 	Triangles.Reset();
 	UV0.Reset();
 
-	CreateVertices();
+	CreateVerticesWithoutHeightMap();
 	CreateTriangles();
 
 	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 
 	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	ProceduralMesh->SetMaterial(0, Material);
+	
 	
 }
 
@@ -46,47 +49,82 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
+		{
+		Vertices.Reset();
+		Triangles.Reset();
+		UV0.Reset();
+		CreateVertices();
+		CreateTriangles();
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+		}
+	else
+	{
+		// Handle case where HeightmapTexture becomes null after being initially not null
+		Vertices.Reset();
+		Triangles.Reset();
+		UV0.Reset();
+		CreateVerticesWithoutHeightMap();  // Using Perlin Noise
+		CreateTriangles();
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+	}
+}
+
+void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
+{
+	if (RenderTarget == nullptr)
+	{
+		// Use Perlin noise for height
+		UE_LOG(LogTemp, Warning, TEXT("Heightmap texture is null, using Perlin Noise for height"));
+		for (int X = 0; X <= XSize; ++X)
+		{
+			for (int Y = 0; Y <= YSize; ++Y)
+			{
+				float Z = FMath::PerlinNoise2D(FVector2D(X * NoiseScale + 0.1, Y * NoiseScale + 0.1)) * ZMultiplier;
+				Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+				UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+			}
+		}
+	}
 }
 
 void ABasicProceduralLandscape::CreateVertices()
 {
+		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
-	if (HeightmapTexture == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Heightmap texture is null"));
-		return;
-	}
-
-	//Adapt height map size
-	float TextureSizeX = HeightmapTexture->GetSizeX();
-	float TextureSizeY = HeightmapTexture->GetSizeY();
-
-	// Fetch the underlying resource data of the texture. This is a low-level operation and should be done with care.
-	FTexturePlatformData* TexData = HeightmapTexture->GetPlatformData();
-	FTexture2DMipMap* MipMap = &TexData->Mips[0];
-	FByteBulkData* RawImageData = &MipMap->BulkData;
-	FColor* FormatedImageData = static_cast<FColor*>(RawImageData->Lock(LOCK_READ_ONLY));
-	int TextureWidth = MipMap->SizeX, TextureHeight = MipMap->SizeY;
-	
-	for (int X = 0; X <= XSize; ++X)
-	{
-		for (int Y = 0; Y <= YSize; ++Y)
+		if (RenderTargetResource != nullptr)
 		{
-			int TextureX = FMath::Clamp(int(X * (TextureSizeX / XSize)), 0, TextureSizeX - 1);
-			int TextureY = FMath::Clamp(int(Y * (TextureSizeY / YSize)), 0, TextureSizeY - 1);
-
-			FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
-
-			float Z = PixelColor.R / 255.0f * ZMultiplier;// using R channel from heightmap
 			
-			//GEngine->AddOnScreenDebugMessage(-1,999.0f,FColor::Yellow,FString::Printf(TEXT("Z %f"),Z));
-			Vertices.Add(FVector(X * Scale, Y * Scale, Z ));
-			UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+			FReadSurfaceDataFlags ReadSurfaceDataFlags;
+			ReadSurfaceDataFlags.SetLinearToGamma(false); // Set this to true if you need gamma-corrected colors
+
+			TArray<FColor> FormatedImageData;
+			RenderTargetResource->ReadPixels(FormatedImageData, ReadSurfaceDataFlags);
+
+			int32 TextureWidth = RenderTarget->SizeX;
+			int32 TextureHeight = RenderTarget->SizeY;
+
+			for (int X = 0; X <= XSize; ++X)
+			{
+				for (int Y = 0; Y <= YSize; ++Y)
+				{
+					int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
+					int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
+
+					FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
+
+					float Z = PixelColor.R / 255.0f * ZMultiplier;
+
+					Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+					UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+				}
+			}
 		}
-	}
-	// Unlock the mip level data now that we're done with it. It's important to always unlock any data you've locked as soon as you're done with it.
-	RawImageData->Unlock();
+	
 }
+
 
 void ABasicProceduralLandscape::CreateTriangles()
 {

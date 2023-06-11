@@ -3,13 +3,17 @@
 
 #pragma once
 
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
 #include "BasicProceduralLandscape.generated.h"
 
+
 class UProceduralMeshComponent;
 class UMaterialInterface;
+class UTextureRenderTarget2D;
 
 UCLASS()
 class FELLINGGIANTS_API ABasicProceduralLandscape : public AActor
@@ -42,9 +46,13 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* Material;
+	
+	UPROPERTY(EditAnywhere)
+	USceneCaptureComponent2D* SceneCaptureComponent;
 
 	UPROPERTY(EditAnywhere)
-	UTexture2D* HeightmapTexture;
+	UTextureRenderTarget2D* RenderTarget;
+
 	
 
 public:	
@@ -60,6 +68,7 @@ private:
 	TArray<struct  FProcMeshTangent> Tangents;
 
 	void CreateVertices();
+	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
 
 };
