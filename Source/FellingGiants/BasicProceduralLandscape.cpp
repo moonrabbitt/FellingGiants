@@ -92,7 +92,9 @@ void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
 }
 
 void ABasicProceduralLandscape::CreateVertices()
+
 {
+	//change collision to always update so collision re-renders
 		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
 		if (RenderTargetResource != nullptr)
