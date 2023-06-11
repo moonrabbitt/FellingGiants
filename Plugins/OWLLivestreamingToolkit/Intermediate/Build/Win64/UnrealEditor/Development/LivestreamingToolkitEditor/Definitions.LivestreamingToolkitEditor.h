@@ -376,7 +376,7 @@
 #define WITH_GAMEPLAY_DEBUGGER 1
 #define AIMODULE_API DLLIMPORT
 #define OWL_AUTH_URL "https://plugin-api.offworld.live"
-#define RELEASE_DATE 2023-06-10T22:12:27.466Z
+#define RELEASE_DATE 2023-06-11T22:27:28.517Z
 #define OFFWORLDLIVE_DEBUG 0
 #define DEBUG_APP_LICENCE 0
 #define AUTH_APP_NAME owl-licensing-utility.exe

@@ -1,4 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
+//To do - play with render frame rate
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "BasicProceduralLandscape.h"
@@ -23,6 +24,8 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 void ABasicProceduralLandscape::BeginPlay()
 {
 	Super::BeginPlay();
+	CreateVerticesWithoutHeightMap();
+	CreateTriangles();
 	
 	
 }
@@ -109,16 +112,16 @@ void ABasicProceduralLandscape::CreateVertices()
 			int32 TextureWidth = RenderTarget->SizeX;
 			int32 TextureHeight = RenderTarget->SizeY;
 
-			for (int X = 0; X <= XSize; ++X)
+			for (int X = 1; X <= XSize+1; ++X)
 			{
-				for (int Y = 0; Y <= YSize; ++Y)
+				for (int Y = 1; Y <= YSize+1; ++Y)
 				{
 					int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
 					int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
 
 					FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
 
-					float Z = PixelColor.R / 255.0f * ZMultiplier;
+					float Z = PixelColor.A / 255.0f * ZMultiplier; //set touch designer Normal setting to heightmap in alpha
 
 					Vertices.Add(FVector(X * Scale, Y * Scale, Z));
 					UV0.Add(FVector2D(X * UVScale, Y * UVScale));
