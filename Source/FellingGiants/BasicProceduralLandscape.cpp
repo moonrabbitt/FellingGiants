@@ -1,10 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 //To do - play with render frame rate
 
-#include "Engine/TextureRenderTarget2D.h"
 #include "BasicProceduralLandscape.h"
+#include "Engine/TextureRenderTarget2D.h"
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "GrassMesh.h"
 
 
 // Sets default values
@@ -16,6 +18,9 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
 	ProceduralMesh->SetupAttachment(GetRootComponent());
 
+	GrassMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GrassMeshComponent"));
+	GrassMeshComponent->SetupAttachment(GetRootComponent());
+
 	RenderTarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("RenderTarget")); // Initialize RenderTarget
 
 }
@@ -26,7 +31,7 @@ void ABasicProceduralLandscape::BeginPlay()
 	Super::BeginPlay();
 	CreateVerticesWithoutHeightMap();
 	CreateTriangles();
-	
+	SpawnGrass();
 	
 }
 
@@ -106,7 +111,7 @@ void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
 }
 
 void ABasicProceduralLandscape::CreateVertices()
-{
+{ //read old vertices and just update z
 	FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
 	if (RenderTargetResource != nullptr)
@@ -151,7 +156,7 @@ void ABasicProceduralLandscape::CreateVertices()
 
 
 // void ABasicProceduralLandscape::CreateVertices()
-//
+// //create new vertices every frame
 // {
 // 	//change collision to always update so collision re-renders
 // 		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
@@ -207,5 +212,26 @@ void ABasicProceduralLandscape::CreateTriangles()
 			++Vertex;
 		}
 		++Vertex;
+	}
+}
+
+void ABasicProceduralLandscape::SpawnGrass()
+{
+	// Ensure the grass mesh has been set in the editor.
+	if (!GrassMeshComponent->GetStaticMesh())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
+		return;
+	}
+
+	// Clear existing grass instances
+	GrassMeshComponent->ClearInstances();
+
+	// Add an instance of the grass mesh for each vertex in the landscape
+	for (const FVector& Vertex : Vertices)
+	{
+		FTransform InstanceTransform;
+		InstanceTransform.SetLocation(Vertex);
+		GrassMeshComponent->AddInstance(InstanceTransform);
 	}
 }

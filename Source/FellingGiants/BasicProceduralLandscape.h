@@ -53,6 +53,9 @@ protected:
 	UPROPERTY(EditAnywhere)
 	UTextureRenderTarget2D* RenderTarget;
 
+	UPROPERTY(EditAnywhere, Category = "Components")
+	UInstancedStaticMeshComponent* GrassMeshComponent;
+
 	
 
 public:	
@@ -70,5 +73,5 @@ private:
 	void CreateVertices();
 	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
-
+	void SpawnGrass();
 };

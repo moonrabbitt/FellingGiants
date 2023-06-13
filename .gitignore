@@ -3,6 +3,11 @@
 Content/StarterContent/*
 Plugins/*
 Developers/*
+*.FBX
+*.fbx
+*.png
+*.uasset
+
 # Compiled Object files
 *.slo
 *.lo
