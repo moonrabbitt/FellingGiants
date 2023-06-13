@@ -230,8 +230,16 @@ void ABasicProceduralLandscape::SpawnGrass()
 	// Add an instance of the grass mesh for each vertex in the landscape
 	for (const FVector& Vertex : Vertices)
 	{
+		// Random height
+		float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
+
+		// Random rotation
+		float RandomYaw = FMath::RandRange(0.0f, 360.0f);
+        
 		FTransform InstanceTransform;
-		InstanceTransform.SetLocation(Vertex);
+		InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Vertex) + FVector(0, 0, RandomHeight));
+		InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+
 		GrassMeshComponent->AddInstance(InstanceTransform);
 	}
 }

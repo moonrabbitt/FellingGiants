@@ -38,6 +38,12 @@ public:
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.000001))
 	float UVScale = 0.0f;
 
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1))
+	float MinGrassHeight;
+	
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1))
+	float MaxGrassHeight;
+
 
 protected:
 	// Called when the game starts or when spawned
