@@ -48,6 +48,7 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		CreateTriangles();
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+		
 		}
 	else
 	{
@@ -60,7 +61,7 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
-	
+	SpawnGrass();
 	
 }
 
