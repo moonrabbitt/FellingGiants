@@ -68,7 +68,7 @@
 #define UE_PROJECT_NAME FellingGiants
 #define UE_TARGET_NAME FellingGiantsEditor
 #define OWL_AUTH_URL "https://plugin-api.offworld.live"
-#define RELEASE_DATE 2023-06-11T22:27:28.517Z
+#define RELEASE_DATE 2023-06-13T13:51:12.580Z
 #define OFFWORLDLIVE_DEBUG 0
 #define DEBUG_APP_LICENCE 0
 #define AUTH_APP_NAME owl-licensing-utility.exe
@@ -382,7 +382,7 @@
 #define ANIMATIONDATACONTROLLER_API DLLIMPORT
 #define LIVESTREAMINGTOOLKITSHADERS_API DLLIMPORT
 #define OWL_AUTH_URL "https://plugin-api.offworld.live"
-#define RELEASE_DATE 2023-06-11T22:27:28.517Z
+#define RELEASE_DATE 2023-06-13T13:51:12.580Z
 #define OFFWORLDLIVE_DEBUG 0
 #define DEBUG_APP_LICENCE 0
 #define AUTH_APP_NAME owl-licensing-utility.exe

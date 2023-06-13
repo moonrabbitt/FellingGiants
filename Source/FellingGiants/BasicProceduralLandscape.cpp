@@ -33,17 +33,28 @@ void ABasicProceduralLandscape::BeginPlay()
 void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 {	//No longer need to run game, object loaded on construction script which is exectuted before game begins
 	//Clear old variables on construction
-	Vertices.Reset();
-	Triangles.Reset();
-	UV0.Reset();
-
-	CreateVerticesWithoutHeightMap();
-	CreateTriangles();
-
-	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
-
-	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
-	ProceduralMesh->SetMaterial(0, Material);
+	
+	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
+		{
+		Vertices.Reset();
+		Triangles.Reset();
+		UV0.Reset();
+		CreateVertices();
+		CreateTriangles();
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+		}
+	else
+	{
+		// Handle case where HeightmapTexture becomes null after being initially not null
+		Vertices.Reset();
+		Triangles.Reset();
+		UV0.Reset();
+		CreateVerticesWithoutHeightMap();  // Using Perlin Noise
+		CreateTriangles();
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+	}
 	
 	
 }
@@ -95,41 +106,87 @@ void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
 }
 
 void ABasicProceduralLandscape::CreateVertices()
-
 {
-	//change collision to always update so collision re-renders
-		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
+	FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
 
-		if (RenderTargetResource != nullptr)
+	if (RenderTargetResource != nullptr)
+	{
+		FReadSurfaceDataFlags ReadSurfaceDataFlags;
+		ReadSurfaceDataFlags.SetLinearToGamma(false); // Set this to true if you need gamma-corrected colors
+
+		TArray<FColor> FormatedImageData;
+		RenderTargetResource->ReadPixels(FormatedImageData, ReadSurfaceDataFlags);
+
+		int32 TextureWidth = RenderTarget->SizeX;
+		int32 TextureHeight = RenderTarget->SizeY;
+
+		int32 VertexIndex = 0;  // Track the current index of Vertices array
+		for (int X = 1; X <= XSize+1; ++X)
 		{
-			
-			FReadSurfaceDataFlags ReadSurfaceDataFlags;
-			ReadSurfaceDataFlags.SetLinearToGamma(false); // Set this to true if you need gamma-corrected colors
-
-			TArray<FColor> FormatedImageData;
-			RenderTargetResource->ReadPixels(FormatedImageData, ReadSurfaceDataFlags);
-
-			int32 TextureWidth = RenderTarget->SizeX;
-			int32 TextureHeight = RenderTarget->SizeY;
-
-			for (int X = 1; X <= XSize+1; ++X)
+			for (int Y = 1; Y <= YSize+1; ++Y)
 			{
-				for (int Y = 1; Y <= YSize+1; ++Y)
+				int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
+				int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
+
+				FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
+
+				float Z = PixelColor.A / 255.0f * ZMultiplier; //set touch designer Normal setting to heightmap in alpha
+
+				// Only change the Z value of the existing vertex, if it exists
+				if (Vertices.IsValidIndex(VertexIndex))
 				{
-					int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
-					int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
-
-					FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
-
-					float Z = PixelColor.A / 255.0f * ZMultiplier; //set touch designer Normal setting to heightmap in alpha
-
+					Vertices[VertexIndex].Z = Z;
+				}
+				// If the vertex does not exist, add it to the array
+				else
+				{
 					Vertices.Add(FVector(X * Scale, Y * Scale, Z));
 					UV0.Add(FVector2D(X * UVScale, Y * UVScale));
 				}
+				++VertexIndex;  // Increment the vertex index for the next loop
 			}
 		}
-	
+	}
 }
+
+
+// void ABasicProceduralLandscape::CreateVertices()
+//
+// {
+// 	//change collision to always update so collision re-renders
+// 		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
+//
+// 		if (RenderTargetResource != nullptr)
+// 		{
+// 			
+// 			FReadSurfaceDataFlags ReadSurfaceDataFlags;
+// 			ReadSurfaceDataFlags.SetLinearToGamma(false); // Set this to true if you need gamma-corrected colors
+//
+// 			TArray<FColor> FormatedImageData;
+// 			RenderTargetResource->ReadPixels(FormatedImageData, ReadSurfaceDataFlags);
+//
+// 			int32 TextureWidth = RenderTarget->SizeX;
+// 			int32 TextureHeight = RenderTarget->SizeY;
+//
+// 			for (int X = 1; X <= XSize+1; ++X)
+// 			{
+// 				for (int Y = 1; Y <= YSize+1; ++Y)
+// 				{
+// 					int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
+// 					int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
+//
+// 					FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
+//
+// 					float Z = PixelColor.A / 255.0f * ZMultiplier; //set touch designer Normal setting to heightmap in alpha
+//
+// 					Vertices.Add(FVector(X * Scale, Y * Scale, Z));
+// 					UV0.Add(FVector2D(X * UVScale, Y * UVScale));
+// 				}
+// 			}
+// 		}
+// 	
+// }
+
 
 
 void ABasicProceduralLandscape::CreateTriangles()
