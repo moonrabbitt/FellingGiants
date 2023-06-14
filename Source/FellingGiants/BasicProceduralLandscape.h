@@ -25,9 +25,9 @@ public:
 	ABasicProceduralLandscape();
 
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-	int XSize = 0;
+	int XSize = 50;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
-	int YSize = 0;
+	int YSize = 50;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
 	float ZMultiplier = 1.0f;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
@@ -39,10 +39,14 @@ public:
 	float UVScale = 0.0f;
 
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1))
-	float MinGrassHeight;
+	float MinGrassHeight = 1;
 	
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1))
-	float MaxGrassHeight;
+	float MaxGrassHeight = 2;
+
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1))
+	float GrassSpawnRadius =100;
+
 
 
 protected:
@@ -63,10 +67,12 @@ protected:
 	UInstancedStaticMeshComponent* GrassMeshComponent;
 
 	UPROPERTY(EditAnywhere)
-	int32 GrassDensity = 1;  // number of grass instances per triangle
+	int32 GrassDensity = 2;  // number of grass instances per triangle
 
 	UPROPERTY(EditAnywhere)
-	float GrassSize = 1.0f;
+	float GrassSize = 2.0f;
+
+	bool bHasSpawnedGrass;
 
 public:	
 	// Called every frame
@@ -83,6 +89,11 @@ private:
 	void CreateVertices();
 	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
+	float GetInterpolatedZ(FVector2D Point);
 	void SpawnGrass();
 	void UpdateGrassZPosition();
+	void PrintToScreen(FString Message);
+	
+
+	
 };

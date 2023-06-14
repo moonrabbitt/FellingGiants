@@ -6,7 +6,9 @@
 #include "ProceduralMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/Engine.h" // Include the engine header file so we can use the debug functions
 #include "GrassMesh.h"
+
 
 
 // Sets default values
@@ -15,13 +17,17 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
-	ProceduralMesh->SetupAttachment(GetRootComponent());
+	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");//create procedural mesh component
+	ProceduralMesh->SetupAttachment(GetRootComponent()); //attach to root component
 
-	GrassMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GrassMeshComponent"));
-	GrassMeshComponent->SetupAttachment(GetRootComponent());
+	GrassMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GrassMeshComponent")); //create grass mesh component
+	GrassMeshComponent->SetupAttachment(GetRootComponent()); //attach to root component
 
 	RenderTarget = CreateDefaultSubobject<UTextureRenderTarget2D>(TEXT("RenderTarget")); // Initialize RenderTarget
+
+	bHasSpawnedGrass = false; //haven't spawned grass yet
+	GrassMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); //grass has no collision
+
 
 }
 
@@ -62,14 +68,23 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
 	SpawnGrass();
+	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
 }
 
 // Called every frame
 void ABasicProceduralLandscape::Tick(float DeltaTime)
 {
-	SpawnGrass();
+	
+	//print value of bHasSpawnedGrass to screen
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
 	
 	Super::Tick(DeltaTime);
+
+	if (!bHasSpawnedGrass)
+	{
+		SpawnGrass();
+		bHasSpawnedGrass = true;
+	}
 
 	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
 		{
@@ -92,6 +107,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
+
 	UpdateGrassZPosition();
 }
 
@@ -179,7 +195,6 @@ void ABasicProceduralLandscape::CreateTriangles()
 	}
 }
 
-
 void ABasicProceduralLandscape::SpawnGrass()
 {
 	// Ensure the grass mesh has been set in the editor.
@@ -192,60 +207,153 @@ void ABasicProceduralLandscape::SpawnGrass()
 	// Clear existing grass instances
 	GrassMeshComponent->ClearInstances();
 
-	// Random engine
-	FRandomStream RandStream;
-	RandStream.Initialize(FMath::Rand());  // Initialize random stream
-
-	// Add an instance of the grass mesh for each triangle in the landscape
-	for (int32 i = 0; i < Triangles.Num(); i+=3)
+	// Add an instance of the grass mesh for each vertex in the landscape
+	for (const FVector& Vertex : Vertices)
 	{
-		if (Triangles.IsValidIndex(i+2))
-		{
-			// Get vertices that form the triangle
-			FVector VertexA = Vertices[Triangles[i]];
-			FVector VertexB = Vertices[Triangles[i+1]];
-			FVector VertexC = Vertices[Triangles[i+2]];
+		for (int i = 0; i < GrassDensity; i++){
+			// Random size of grass
+			float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
 
-			// Generate grass instances within the triangle
-			for (int32 j = 0; j < GrassDensity; ++j)
+			// Random rotation
+			float RandomYaw = FMath::RandRange(0.0f, 360.0f);
+
+			// Bounds of the landscape
+			FVector Offset = FVector(FMath::RandRange(0.0f, GrassDensity*Scale),FMath::RandRange(0.0f, GrassDensity*Scale),0);
+			FVector Position = GetActorTransform().TransformPosition(Vertex) +Offset;
+			float Z = GetInterpolatedZ(Position);
+			FBox Bounds = GetComponentsBoundingBox();
+			if (!Bounds.IsInside(Position))
 			{
-				// Generate two random numbers for the barycentric coordinates
-				float Rand1 = RandStream.FRand();
-				float Rand2 = RandStream.FRand();
-
-				if (Rand1 + Rand2 >= 1)
-				{
-					Rand1 = 1 - Rand1;
-					Rand2 = 1 - Rand2;
-				}
-
-				// Calculate the position for the new grass instance using barycentric coordinates
-				FVector Position = (1 - Rand1 - Rand2) * VertexA + Rand1 * VertexB + Rand2 * VertexC;
-
-				// Random height
-				float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
-
-				// Random rotation
-				float RandomYaw = FMath::RandRange(0.0f, 360.0f);
-				FTransform InstanceTransform;
-
-				// Set grass size
-				FVector LocalGrassSize = FVector(GrassSize);
-				InstanceTransform.SetScale3D(LocalGrassSize);
-
-				InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position) + FVector(0, 0, RandomHeight));
-				InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
-
-				GrassMeshComponent->AddInstance(InstanceTransform);
+				// 				FString PositionString = Position.ToString();
+				// 				PrintToScreen((TEXT("Position %s is outside landscape bounds!"), *PositionString));
+				continue;
 			}
+		
+			FTransform InstanceTransform;
+			
+			// Set grass size
+			FVector LocalGrassSize = FVector(FMath::RandRange(1.0f, GrassSize));
+			InstanceTransform.SetScale3D(LocalGrassSize);
+			InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Vertex) +Offset); //distance between each vertex = scale
+			// Calculate the Z position by interpolating between the surrounding vertices
+			
+			InstanceTransform.SetLocation(FVector(Position.X, Position.Y, Z));
+			InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+
+			GrassMeshComponent->AddInstance(InstanceTransform);
 		}
 	}
 }
 
+float ABasicProceduralLandscape::GetInterpolatedZ(const FVector2D& Point) const
+{
+	// Determine the grid cell indices
+	int32 LowerX = FMath::FloorToInt(Point.X / Scale);
+	int32 LowerY = FMath::FloorToInt(Point.Y / Scale);
+
+	// Clamp the indices to valid range
+	LowerX = FMath::Clamp(LowerX, 0, XSize - 1);
+	LowerY = FMath::Clamp(LowerY, 0, YSize - 1);
+
+	// Calculate the interpolation factors
+	float AlphaX = (Point.X - LowerX * Scale) / Scale;
+	float AlphaY = (Point.Y - LowerY * Scale) / Scale;
+
+	// Get the heights of the four grid vertices
+	float Height00 = Vertices[LowerY * (XSize + 1) + LowerX].Z;
+	float Height01 = Vertices[LowerY * (XSize + 1) + LowerX + 1].Z;
+	float Height10 = Vertices[(LowerY + 1) * (XSize + 1) + LowerX].Z;
+	float Height11 = Vertices[(LowerY + 1) * (XSize + 1) + LowerX + 1].Z;
+
+	// Interpolate the heights bilinearly
+	float Height0 = FMath::Lerp(Height00, Height01, AlphaX);
+	float Height1 = FMath::Lerp(Height10, Height11, AlphaX);
+	float Height = FMath::Lerp(Height0, Height1, AlphaY);
+
+	return Height;
+}
+
+
+
+//
+// void ABasicProceduralLandscape::SpawnGrass()
+// {
+// 	// Ensure the grass mesh has been set in the editor.
+// 	if (!GrassMeshComponent->GetStaticMesh())
+// 	{
+// 		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
+// 		PrintToScreen(TEXT("Grass mesh not set!"));
+// 		return;
+// 	}
+//
+// 	// Clear existing grass instances
+// 	GrassMeshComponent->ClearInstances();
+//
+// 	// Random engine
+// 	FRandomStream RandStream;
+// 	RandStream.Initialize(FMath::Rand());  // Initialize random stream
+//
+// 	// Bounds of the landscape
+// 	FBox Bounds = GetComponentsBoundingBox();
+//
+// 	// Add an instance of the grass mesh for each vertex in the landscape
+// 	for (const FVector& Vertex : Vertices)
+// 	{
+//
+// 		// Generate grass instances around the vertex
+// 		for (int32 j = 0; j < GrassDensity; ++j)
+// 		{
+// 			float Angle = RandStream.FRand() * 2.0f * PI; // Random angle
+// 			float Radius = RandStream.FRand() * GrassSpawnRadius; // Random radius
+//
+// 			// FVector Offset(Radius * FMath::Cos(Angle), Radius * FMath::Sin(Angle), 0);
+// 			FVector Offset(0,0, 0);
+// 			FVector Position = Vertex + Offset;
+//
+// 			// Ensure the position is within the landscape bounds
+// 			
+// 			// Ensure the position is within the landscape bounds
+// 			if (!Bounds.IsInside(Position))
+// 			{
+// 				FString PositionString = Position.ToString();
+// 				PrintToScreen((TEXT("Position %s is outside landscape bounds!"), *PositionString));
+// 				continue;
+// 			}
+//
+// 			// Random height
+// 			float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight);
+//
+// 			// Random rotation
+// 			float RandomYaw = FMath::RandRange(0.0f, 360.0f);
+// 			
+// 			FTransform InstanceTransform; // Transform of the grass instance
+//
+// 			// Set grass size
+// 			FVector LocalGrassSize = FVector(GrassSize);
+// 			InstanceTransform.SetScale3D(LocalGrassSize);
+// 			
+// 			// Set grass location and rotation
+// 			InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position) + FVector(0, 0, RandomHeight));
+// 			InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+//
+// 			// Add the grass instance
+// 			GrassMeshComponent->AddInstance(InstanceTransform);
+// 		}
+// 	}
+// }
+
+
+//function to print error message to screen
+void ABasicProceduralLandscape::PrintToScreen(FString Message)
+{
+	FColor Color = FColor::Red;
+	float DisplayTime = 5.0f; // Duration to display the message on screen
+	GEngine->AddOnScreenDebugMessage(-1, DisplayTime, Color, Message);
+}
 
 void ABasicProceduralLandscape::UpdateGrassZPosition()
-{
-	for (int32 i = 0; i < GrassMeshComponent->GetInstanceCount(); ++i)
+{	int32 Count = FMath::Min(GrassMeshComponent->GetInstanceCount(), Vertices.Num());
+	for (int32 i = 0; i < Count; ++i)
 	{
 		FTransform InstanceTransform;
 		GrassMeshComponent->GetInstanceTransform(i, InstanceTransform, true);
