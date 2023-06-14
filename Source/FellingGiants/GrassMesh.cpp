@@ -17,12 +17,12 @@ AGrassMesh::AGrassMesh()
 	RootComponent = GrassMeshComponent;
 
 	// Load a specific mesh
-	auto MeshAsset = ConstructorHelpers::FObjectFinder<UStaticMesh>(TEXT("Content/Grass/SM_GrassClump"));
+	// auto MeshAsset = ConstructorHelpers::FObjectFinder<UStaticMesh>(TEXT("Content/Grass/SM_GrassClump"));
 
-	if (MeshAsset.Succeeded())
-	{
-		GrassMeshComponent->SetStaticMesh(MeshAsset.Object);
-	}
+	// if (MeshAsset.Succeeded())
+	// {
+	// 	GrassMeshComponent->SetStaticMesh(MeshAsset.Object);
+	// }
 }
 
 // Called when the game starts or when spawned

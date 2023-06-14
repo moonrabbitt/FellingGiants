@@ -62,12 +62,13 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
 	SpawnGrass();
-	
 }
 
 // Called every frame
 void ABasicProceduralLandscape::Tick(float DeltaTime)
 {
+	SpawnGrass();
+	
 	Super::Tick(DeltaTime);
 
 	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
@@ -91,6 +92,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
+	UpdateGrassZPosition();
 }
 
 void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
@@ -156,45 +158,6 @@ void ABasicProceduralLandscape::CreateVertices()
 }
 
 
-// void ABasicProceduralLandscape::CreateVertices()
-// //create new vertices every frame
-// {
-// 	//change collision to always update so collision re-renders
-// 		FRenderTarget* RenderTargetResource = RenderTarget->GameThread_GetRenderTargetResource();
-//
-// 		if (RenderTargetResource != nullptr)
-// 		{
-// 			
-// 			FReadSurfaceDataFlags ReadSurfaceDataFlags;
-// 			ReadSurfaceDataFlags.SetLinearToGamma(false); // Set this to true if you need gamma-corrected colors
-//
-// 			TArray<FColor> FormatedImageData;
-// 			RenderTargetResource->ReadPixels(FormatedImageData, ReadSurfaceDataFlags);
-//
-// 			int32 TextureWidth = RenderTarget->SizeX;
-// 			int32 TextureHeight = RenderTarget->SizeY;
-//
-// 			for (int X = 1; X <= XSize+1; ++X)
-// 			{
-// 				for (int Y = 1; Y <= YSize+1; ++Y)
-// 				{
-// 					int32 TextureX = FMath::Clamp(int(X * (TextureWidth / XSize)), 0, TextureWidth - 1);
-// 					int32 TextureY = FMath::Clamp(int(Y * (TextureHeight / YSize)), 0, TextureHeight - 1);
-//
-// 					FColor PixelColor = FormatedImageData[TextureY * TextureWidth + TextureX];
-//
-// 					float Z = PixelColor.A / 255.0f * ZMultiplier; //set touch designer Normal setting to heightmap in alpha
-//
-// 					Vertices.Add(FVector(X * Scale, Y * Scale, Z));
-// 					UV0.Add(FVector2D(X * UVScale, Y * UVScale));
-// 				}
-// 			}
-// 		}
-// 	
-// }
-
-
-
 void ABasicProceduralLandscape::CreateTriangles()
 {
 	int Vertex = 0;
@@ -216,6 +179,7 @@ void ABasicProceduralLandscape::CreateTriangles()
 	}
 }
 
+
 void ABasicProceduralLandscape::SpawnGrass()
 {
 	// Ensure the grass mesh has been set in the editor.
@@ -228,19 +192,74 @@ void ABasicProceduralLandscape::SpawnGrass()
 	// Clear existing grass instances
 	GrassMeshComponent->ClearInstances();
 
-	// Add an instance of the grass mesh for each vertex in the landscape
-	for (const FVector& Vertex : Vertices)
+	// Random engine
+	FRandomStream RandStream;
+	RandStream.Initialize(FMath::Rand());  // Initialize random stream
+
+	// Add an instance of the grass mesh for each triangle in the landscape
+	for (int32 i = 0; i < Triangles.Num(); i+=3)
 	{
-		// Random height
-		float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
+		if (Triangles.IsValidIndex(i+2))
+		{
+			// Get vertices that form the triangle
+			FVector VertexA = Vertices[Triangles[i]];
+			FVector VertexB = Vertices[Triangles[i+1]];
+			FVector VertexC = Vertices[Triangles[i+2]];
 
-		// Random rotation
-		float RandomYaw = FMath::RandRange(0.0f, 360.0f);
-        
+			// Generate grass instances within the triangle
+			for (int32 j = 0; j < GrassDensity; ++j)
+			{
+				// Generate two random numbers for the barycentric coordinates
+				float Rand1 = RandStream.FRand();
+				float Rand2 = RandStream.FRand();
+
+				if (Rand1 + Rand2 >= 1)
+				{
+					Rand1 = 1 - Rand1;
+					Rand2 = 1 - Rand2;
+				}
+
+				// Calculate the position for the new grass instance using barycentric coordinates
+				FVector Position = (1 - Rand1 - Rand2) * VertexA + Rand1 * VertexB + Rand2 * VertexC;
+
+				// Random height
+				float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
+
+				// Random rotation
+				float RandomYaw = FMath::RandRange(0.0f, 360.0f);
+				FTransform InstanceTransform;
+
+				// Set grass size
+				FVector LocalGrassSize = FVector(GrassSize);
+				InstanceTransform.SetScale3D(LocalGrassSize);
+
+				InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position) + FVector(0, 0, RandomHeight));
+				InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+
+				GrassMeshComponent->AddInstance(InstanceTransform);
+			}
+		}
+	}
+}
+
+
+void ABasicProceduralLandscape::UpdateGrassZPosition()
+{
+	for (int32 i = 0; i < GrassMeshComponent->GetInstanceCount(); ++i)
+	{
 		FTransform InstanceTransform;
-		InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Vertex) + FVector(0, 0, RandomHeight));
-		InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+		GrassMeshComponent->GetInstanceTransform(i, InstanceTransform, true);
+        
+		// The index i should match with the index of the Vertices array, if the number of grass instances
+		// and the number of vertices are the same.
+		
+		if (Vertices.IsValidIndex(i))
+		{
+			FVector NewLocation = InstanceTransform.GetLocation();
+			NewLocation.Z = GetActorTransform().TransformPosition(Vertices[i]).Z;
+			InstanceTransform.SetLocation(NewLocation);
 
-		GrassMeshComponent->AddInstance(InstanceTransform);
+			GrassMeshComponent->UpdateInstanceTransform(i, InstanceTransform, true, true);
+		}
 	}
 }

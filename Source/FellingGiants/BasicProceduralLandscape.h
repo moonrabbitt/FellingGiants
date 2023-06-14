@@ -62,7 +62,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	UInstancedStaticMeshComponent* GrassMeshComponent;
 
-	
+	UPROPERTY(EditAnywhere)
+	int32 GrassDensity = 1;  // number of grass instances per triangle
+
+	UPROPERTY(EditAnywhere)
+	float GrassSize = 1.0f;
 
 public:	
 	// Called every frame
@@ -80,4 +84,5 @@ private:
 	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
 	void SpawnGrass();
+	void UpdateGrassZPosition();
 };
