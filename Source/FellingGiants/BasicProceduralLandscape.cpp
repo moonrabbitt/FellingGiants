@@ -29,6 +29,7 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 	GrassMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); //grass has no collision
 
 
+
 }
 
 // Called when the game starts or when spawned
@@ -106,10 +107,30 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 
 	if (!bHasSpawnedGrass)
 	{
-		SpawnGrass();
+		GrassPositions = SpawnGrass();
 		bHasSpawnedGrass = true;
+		
 	}
-	SpawnGrass();
+
+	else
+	{
+		UpdateGrassZPosition(GrassPositions);
+		// GrassPositions = SpawnGrass();
+	}
+
+	// // Log the entire GrassPositions array
+	// FString GrassPositionsString;
+	// for (int32 i = 0; i < GrassPositions.Num(); ++i)
+	// {
+	// 	const FVector& Position = GrassPositions[i];
+	// 	GrassPositionsString += FString::Printf(TEXT("Grass Position %d: X=%.2f, Y=%.2f, Z=%.2f\n"),
+	// 		i,
+	// 		Position.X,
+	// 		Position.Y,
+	// 		Position.Z);
+	// }
+	// UE_LOG(LogTemp, Warning, TEXT("Grass Positions:\n%s"), *GrassPositionsString);
+
 }
 
 void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
@@ -197,13 +218,14 @@ void ABasicProceduralLandscape::CreateTriangles()
 	}
 }
 
-void ABasicProceduralLandscape::SpawnGrass()
+TArray<FVector> ABasicProceduralLandscape::SpawnGrass()
 {
+	TArray<FVector> LocalGrassPositions;
 	// Ensure the grass mesh has been set in the editor.
 	if (!GrassMeshComponent->GetStaticMesh())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
-		return;
+	    return LocalGrassPositions;
 	}
 
 	// Clear existing grass instances
@@ -242,7 +264,7 @@ void ABasicProceduralLandscape::SpawnGrass()
 
 				// Calculate the position for the new grass instance using barycentric coordinates
 				FVector Position = (1 - Rand1 - Rand2) * VertexA + Rand1 * VertexB + Rand2 * VertexC;
-
+			
 				
 				// Random rotation
 				float RandomYaw = FMath::RandRange(0.0f, 360.0f);
@@ -256,77 +278,14 @@ void ABasicProceduralLandscape::SpawnGrass()
 				InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
 
 				GrassMeshComponent->AddInstance(InstanceTransform);
+				
+				LocalGrassPositions.Add(FVector(Position.X, Position.Y,RandomYaw));
 			}
 		}
 	}
-}
 
-//
-// void ABasicProceduralLandscape::SpawnGrass()
-// {
-// 	// Ensure the grass mesh has been set in the editor.
-// 	if (!GrassMeshComponent->GetStaticMesh())
-// 	{
-// 		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
-// 		PrintToScreen(TEXT("Grass mesh not set!"));
-// 		return;
-// 	}
-//
-// 	// Clear existing grass instances
-// 	GrassMeshComponent->ClearInstances();
-//
-// 	// Random engine
-// 	FRandomStream RandStream;
-// 	RandStream.Initialize(FMath::Rand());  // Initialize random stream
-//
-// 	// Bounds of the landscape
-// 	FBox Bounds = GetComponentsBoundingBox();
-//
-// 	// Add an instance of the grass mesh for each vertex in the landscape
-// 	for (const FVector& Vertex : Vertices)
-// 	{
-//
-// 		// Generate grass instances around the vertex
-// 		for (int32 j = 0; j < GrassDensity; ++j)
-// 		{
-// 			float Angle = RandStream.FRand() * 2.0f * PI; // Random angle
-// 			float Radius = RandStream.FRand() * GrassSpawnRadius; // Random radius
-//
-// 			// FVector Offset(Radius * FMath::Cos(Angle), Radius * FMath::Sin(Angle), 0);
-// 			FVector Offset(0,0, 0);
-// 			FVector Position = Vertex + Offset;
-//
-// 			// Ensure the position is within the landscape bounds
-// 			
-// 			// Ensure the position is within the landscape bounds
-// 			if (!Bounds.IsInside(Position))
-// 			{
-// 				FString PositionString = Position.ToString();
-// 				PrintToScreen((TEXT("Position %s is outside landscape bounds!"), *PositionString));
-// 				continue;
-// 			}
-//
-// 			// Random height
-// 			float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight);
-//
-// 			// Random rotation
-// 			float RandomYaw = FMath::RandRange(0.0f, 360.0f);
-// 			
-// 			FTransform InstanceTransform; // Transform of the grass instance
-//
-// 			// Set grass size
-// 			FVector LocalGrassSize = FVector(GrassSize);
-// 			InstanceTransform.SetScale3D(LocalGrassSize);
-// 			
-// 			// Set grass location and rotation
-// 			InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position) + FVector(0, 0, RandomHeight));
-// 			InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
-//
-// 			// Add the grass instance
-// 			GrassMeshComponent->AddInstance(InstanceTransform);
-// 		}
-// 	}
-// }
+	return LocalGrassPositions;
+}
 
 
 //function to print error message to screen
@@ -337,21 +296,80 @@ void ABasicProceduralLandscape::PrintToScreen(FString Message)
 	GEngine->AddOnScreenDebugMessage(-1, DisplayTime, Color, Message);
 }
 
-void ABasicProceduralLandscape::UpdateGrassZPosition()
-{	int32 Count = FMath::Min(GrassMeshComponent->GetInstanceCount(), Vertices.Num());
-	for (int32 i = 0; i < Count; ++i)
-	{
-		FTransform InstanceTransform;
-		GrassMeshComponent->GetInstanceTransform(i, InstanceTransform, true);
-		
-		
-		if (Vertices.IsValidIndex(i))
-		{
-			FVector NewLocation = InstanceTransform.GetLocation();
-			NewLocation.Z = GetActorTransform().TransformPosition(Vertices[i]).Z;
-			InstanceTransform.SetLocation(NewLocation);
 
-			GrassMeshComponent->UpdateInstanceTransform(i, InstanceTransform, true, true);
+
+void ABasicProceduralLandscape::UpdateGrassZPosition(const TArray<FVector>& LocalGrassPositions)
+{
+	// Ensure the grass mesh has been set in the editor.
+	if (!GrassMeshComponent->GetStaticMesh())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
+		return;
+	}
+
+
+	// Clear existing grass instances
+	GrassMeshComponent->ClearInstances();
+
+	int GrassPosIdx = 0;
+	
+	// Add an instance of the grass mesh for each triangle in the landscape
+	for (int32 i = 0; i < Triangles.Num(); i+=3)
+	{
+		//find vertices in triangle
+		
+		
+		if (Triangles.IsValidIndex(i+2)&& Vertices.Num() > Triangles[i+2])
+		{
+			// Get vertices that form the triangle
+			FVector VertexA = Vertices[Triangles[i]];
+			FVector VertexB = Vertices[Triangles[i+1]];
+			FVector VertexC = Vertices[Triangles[i+2]];
+
+			// Generate grass instances within the triangle
+			for (int32 j = 0; j < GrassDensity; ++j)
+			{
+				// Generate two random numbers for the barycentric coordinates
+				float X = LocalGrassPositions[GrassPosIdx].X;
+				float Y = LocalGrassPositions[GrassPosIdx].Y;
+				float Yaw = LocalGrassPositions[GrassPosIdx].Z;
+
+		
+				
+				GrassPosIdx+=1;
+
+				if (X + Y >= 1)
+				{
+					X = 1 - X;
+					Y = 1 - Y;
+				}
+
+				// Calculate the position for the new grass instance using barycentric coordinates
+				FVector Position = (1 - X - Y) * VertexA + X * VertexB + Y * VertexC;
+
+				// Log the entire GrassPositions array
+				FString GrassPositionsString;
+				GrassPositionsString += FString::Printf(TEXT("Grass Position %d: X=%.2f, Y=%.2f, Z=%.2f\n"),
+					GrassPosIdx,
+					X,
+					Y,
+					Yaw);
+				
+				UE_LOG(LogTemp, Warning, TEXT("Grass Positions:\n%s"), *GrassPositionsString);
+				
+				FTransform InstanceTransform;
+
+				// Set grass size
+				FVector LocalGrassSize = FVector(GrassSize);
+				InstanceTransform.SetScale3D(LocalGrassSize);
+
+				InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position));
+				InstanceTransform.SetRotation(FRotator(0, Yaw, 0).Quaternion());
+			
+
+				GrassMeshComponent->AddInstance(InstanceTransform);
+				
+			}
 		}
 	}
 }

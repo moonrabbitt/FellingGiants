@@ -74,6 +74,10 @@ protected:
 
 	bool bHasSpawnedGrass;
 
+	TArray<FVector> GrassPositions;
+
+	
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -85,14 +89,16 @@ private:
 	TArray<FVector2D> UV0;
 	TArray<FVector> Normals;
 	TArray<struct  FProcMeshTangent> Tangents;
+	
 
 	void CreateVertices();
 	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
-	float GetInterpolatedZ(FVector2D Point);
-	void SpawnGrass();
-	void UpdateGrassZPosition();
+	TArray<FVector> SpawnGrass();
+	void UpdateGrassZPosition(const TArray<FVector>& GrassPositions);
 	void PrintToScreen(FString Message);
+
+	
 	
 
 	
