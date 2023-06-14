@@ -27,6 +27,8 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 
 	bHasSpawnedGrass = false; //haven't spawned grass yet
 	GrassMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision); //grass has no collision
+	//get random grass positions
+
 
 
 
@@ -38,6 +40,7 @@ void ABasicProceduralLandscape::BeginPlay()
 	Super::BeginPlay();
 	CreateVerticesWithoutHeightMap();
 	CreateTriangles();
+	GetRandomGrassPositions();
 	SpawnGrass();
 	
 }
@@ -68,6 +71,9 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
+	// TArray<FVector2D> GrassPositions = GetRandomGrassPositions();
+	GrassPositions.Reset(); //clear old grass positions
+	GetRandomGrassPositions(); //get new grass positions
 	SpawnGrass();
 	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
 }
@@ -107,15 +113,19 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 
 	if (!bHasSpawnedGrass)
 	{
-		GrassPositions = SpawnGrass();
+		// Spawn grass the first time
+		GrassPositions.Reset(); //clear old grass positions
+		GetRandomGrassPositions(); //get new grass positions
+		SpawnGrass();
 		bHasSpawnedGrass = true;
 		
 	}
 
 	else
 	{
-		UpdateGrassZPosition(GrassPositions);
-		// GrassPositions = SpawnGrass();
+		
+		// already spawned grass, update grass positions
+		SpawnGrass();
 	}
 
 	// // Log the entire GrassPositions array
@@ -218,14 +228,14 @@ void ABasicProceduralLandscape::CreateTriangles()
 	}
 }
 
-TArray<FVector> ABasicProceduralLandscape::SpawnGrass()
+void ABasicProceduralLandscape::SpawnGrass()
 {
-	TArray<FVector> LocalGrassPositions;
+
 	// Ensure the grass mesh has been set in the editor.
 	if (!GrassMeshComponent->GetStaticMesh())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Grass mesh not set!"));
-	    return LocalGrassPositions;
+	
 	}
 
 	// Clear existing grass instances
@@ -253,8 +263,11 @@ TArray<FVector> ABasicProceduralLandscape::SpawnGrass()
 			for (int32 j = 0; j < GrassDensity; ++j)
 			{
 				// Generate two random numbers for the barycentric coordinates
-				float Rand1 = RandStream.FRand();
-				float Rand2 = RandStream.FRand();
+				// float Rand1 = RandStream.FRand();
+				// float Rand2 = RandStream.FRand();
+
+				float Rand1 = GrassPositions[i+j].X;
+				float Rand2 = GrassPositions[i+j].Y;
 
 				if (Rand1 + Rand2 >= 1)
 				{
@@ -279,12 +292,11 @@ TArray<FVector> ABasicProceduralLandscape::SpawnGrass()
 
 				GrassMeshComponent->AddInstance(InstanceTransform);
 				
-				LocalGrassPositions.Add(FVector(Position.X, Position.Y,RandomYaw));
+				
 			}
 		}
 	}
 
-	return LocalGrassPositions;
 }
 
 
@@ -347,15 +359,15 @@ void ABasicProceduralLandscape::UpdateGrassZPosition(const TArray<FVector>& Loca
 				// Calculate the position for the new grass instance using barycentric coordinates
 				FVector Position = (1 - X - Y) * VertexA + X * VertexB + Y * VertexC;
 
-				// Log the entire GrassPositions array
-				FString GrassPositionsString;
-				GrassPositionsString += FString::Printf(TEXT("Grass Position %d: X=%.2f, Y=%.2f, Z=%.2f\n"),
-					GrassPosIdx,
-					X,
-					Y,
-					Yaw);
-				
-				UE_LOG(LogTemp, Warning, TEXT("Grass Positions:\n%s"), *GrassPositionsString);
+				// // Log the entire GrassPositions array
+				// FString GrassPositionsString;
+				// GrassPositionsString += FString::Printf(TEXT("Grass Position %d: X=%.2f, Y=%.2f, Z=%.2f\n"),
+				// 	GrassPosIdx,
+				// 	X,
+				// 	Y,
+				// 	Yaw);
+				//
+				// UE_LOG(LogTemp, Warning, TEXT("Grass Positions:\n%s"), *GrassPositionsString);
 				
 				FTransform InstanceTransform;
 
@@ -372,4 +384,21 @@ void ABasicProceduralLandscape::UpdateGrassZPosition(const TArray<FVector>& Loca
 			}
 		}
 	}
+}
+
+
+void ABasicProceduralLandscape::GetRandomGrassPositions(){
+	FRandomStream RandStream;
+	//generate list of random positions for grass locations
+	// TArray<FVector2d> RandomGrassPositions;
+	
+	for (int p=0;p<=(Triangles.Num()*GrassDensity);p++)
+	{
+		// RandomGrassPositions.Add(FVector2D(RandStream.FRand(),RandStream.FRand()));
+		GrassPositions.Add(FVector2D(RandStream.FRand(),RandStream.FRand()));
+	}
+
+	
+
+	// return RandomGrassPositions;
 }

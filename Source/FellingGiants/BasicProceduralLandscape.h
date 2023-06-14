@@ -74,7 +74,7 @@ protected:
 
 	bool bHasSpawnedGrass;
 
-	TArray<FVector> GrassPositions;
+	
 
 	
 
@@ -89,15 +89,17 @@ private:
 	TArray<FVector2D> UV0;
 	TArray<FVector> Normals;
 	TArray<struct  FProcMeshTangent> Tangents;
+	TArray<FVector2d> GrassPositions;
 	
 
 	void CreateVertices();
 	void CreateVerticesWithoutHeightMap();
 	void CreateTriangles();
-	TArray<FVector> SpawnGrass();
+	void SpawnGrass();
 	void UpdateGrassZPosition(const TArray<FVector>& GrassPositions);
 	void PrintToScreen(FString Message);
-
+	void GetRandomGrassPositions();
+	
 	
 	
 
