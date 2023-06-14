@@ -71,11 +71,12 @@ void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	}
-	// TArray<FVector2D> GrassPositions = GetRandomGrassPositions();
-	GrassPositions.Reset(); //clear old grass positions
-	GetRandomGrassPositions(); //get new grass positions
-	SpawnGrass();
-	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
+
+	//commented out cause debug is very slow 
+	// GrassPositions.Reset(); //clear old grass positions
+	// GetRandomGrassPositions(); //get new grass positions
+	// SpawnGrass();
+
 }
 
 // Called every frame
@@ -280,6 +281,7 @@ void ABasicProceduralLandscape::SpawnGrass()
 			
 				
 				// Random rotation
+				//grass still moves weirdly cause of random rotation but fix this later
 				float RandomYaw = FMath::RandRange(0.0f, 360.0f);
 				FTransform InstanceTransform;
 
