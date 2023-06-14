@@ -79,12 +79,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
 	
 	Super::Tick(DeltaTime);
-
-	if (!bHasSpawnedGrass)
-	{
-		SpawnGrass();
-		bHasSpawnedGrass = true;
-	}
+	
 
 	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
 		{
@@ -106,9 +101,15 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 		CreateTriangles();
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
+		
 	}
 
-	UpdateGrassZPosition();
+	if (!bHasSpawnedGrass)
+	{
+		SpawnGrass();
+		bHasSpawnedGrass = true;
+	}
+	SpawnGrass();
 }
 
 void ABasicProceduralLandscape::CreateVerticesWithoutHeightMap()
@@ -178,17 +179,18 @@ void ABasicProceduralLandscape::CreateTriangles()
 {
 	int Vertex = 0;
 
-	for (int X = 0; X < XSize; ++X)
+	for (int Y = 0; Y < YSize; ++Y)
 	{
-		for (int Y = 0; Y < YSize; ++Y)
-		{
+		for (int X = 0; X < XSize; ++X)
+		{	//first triangle
 			Triangles.Add(Vertex);//Bottom left corner
 			Triangles.Add(Vertex + 1);//Bottom right corner
-			Triangles.Add(Vertex + YSize + 1);//Top left corner
+			Triangles.Add(Vertex + XSize + 1);//Top left corner
+			//second triangle
 			Triangles.Add(Vertex + 1);//Bottom right corner
-			Triangles.Add(Vertex + YSize + 2);//Top right corner
-			Triangles.Add(Vertex + YSize + 1);//Top left corner
-
+			Triangles.Add(Vertex + XSize + 2);//Top right corner
+			Triangles.Add(Vertex + XSize + 1);//Top left corner
+			
 			++Vertex;
 		}
 		++Vertex;
@@ -207,73 +209,57 @@ void ABasicProceduralLandscape::SpawnGrass()
 	// Clear existing grass instances
 	GrassMeshComponent->ClearInstances();
 
-	// Add an instance of the grass mesh for each vertex in the landscape
-	for (const FVector& Vertex : Vertices)
+	// Random engine
+	FRandomStream RandStream;
+	RandStream.Initialize(FMath::Rand());  // Initialize random stream
+	
+	
+	// Add an instance of the grass mesh for each triangle in the landscape
+	for (int32 i = 0; i < Triangles.Num(); i+=3)
 	{
-		for (int i = 0; i < GrassDensity; i++){
-			// Random size of grass
-			float RandomHeight = FMath::RandRange(MinGrassHeight, MaxGrassHeight); // MinHeight and MaxHeight should be your desired values
-
-			// Random rotation
-			float RandomYaw = FMath::RandRange(0.0f, 360.0f);
-
-			// Bounds of the landscape
-			FVector Offset = FVector(FMath::RandRange(0.0f, GrassDensity*Scale),FMath::RandRange(0.0f, GrassDensity*Scale),0);
-			FVector Position = GetActorTransform().TransformPosition(Vertex) +Offset;
-			float Z = GetInterpolatedZ(Position);
-			FBox Bounds = GetComponentsBoundingBox();
-			if (!Bounds.IsInside(Position))
-			{
-				// 				FString PositionString = Position.ToString();
-				// 				PrintToScreen((TEXT("Position %s is outside landscape bounds!"), *PositionString));
-				continue;
-			}
+		//find vertices in triangle
 		
-			FTransform InstanceTransform;
-			
-			// Set grass size
-			FVector LocalGrassSize = FVector(FMath::RandRange(1.0f, GrassSize));
-			InstanceTransform.SetScale3D(LocalGrassSize);
-			InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Vertex) +Offset); //distance between each vertex = scale
-			// Calculate the Z position by interpolating between the surrounding vertices
-			
-			InstanceTransform.SetLocation(FVector(Position.X, Position.Y, Z));
-			InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+		
+		if (Triangles.IsValidIndex(i+2)&& Vertices.Num() > Triangles[i+2])
+		{
+			// Get vertices that form the triangle
+			FVector VertexA = Vertices[Triangles[i]];
+			FVector VertexB = Vertices[Triangles[i+1]];
+			FVector VertexC = Vertices[Triangles[i+2]];
 
-			GrassMeshComponent->AddInstance(InstanceTransform);
+			// Generate grass instances within the triangle
+			for (int32 j = 0; j < GrassDensity; ++j)
+			{
+				// Generate two random numbers for the barycentric coordinates
+				float Rand1 = RandStream.FRand();
+				float Rand2 = RandStream.FRand();
+
+				if (Rand1 + Rand2 >= 1)
+				{
+					Rand1 = 1 - Rand1;
+					Rand2 = 1 - Rand2;
+				}
+
+				// Calculate the position for the new grass instance using barycentric coordinates
+				FVector Position = (1 - Rand1 - Rand2) * VertexA + Rand1 * VertexB + Rand2 * VertexC;
+
+				
+				// Random rotation
+				float RandomYaw = FMath::RandRange(0.0f, 360.0f);
+				FTransform InstanceTransform;
+
+				// Set grass size
+				FVector LocalGrassSize = FVector(GrassSize);
+				InstanceTransform.SetScale3D(LocalGrassSize);
+
+				InstanceTransform.SetLocation(GetActorTransform().TransformPosition(Position));
+				InstanceTransform.SetRotation(FRotator(0, RandomYaw, 0).Quaternion());
+
+				GrassMeshComponent->AddInstance(InstanceTransform);
+			}
 		}
 	}
 }
-
-float ABasicProceduralLandscape::GetInterpolatedZ(const FVector2D& Point) const
-{
-	// Determine the grid cell indices
-	int32 LowerX = FMath::FloorToInt(Point.X / Scale);
-	int32 LowerY = FMath::FloorToInt(Point.Y / Scale);
-
-	// Clamp the indices to valid range
-	LowerX = FMath::Clamp(LowerX, 0, XSize - 1);
-	LowerY = FMath::Clamp(LowerY, 0, YSize - 1);
-
-	// Calculate the interpolation factors
-	float AlphaX = (Point.X - LowerX * Scale) / Scale;
-	float AlphaY = (Point.Y - LowerY * Scale) / Scale;
-
-	// Get the heights of the four grid vertices
-	float Height00 = Vertices[LowerY * (XSize + 1) + LowerX].Z;
-	float Height01 = Vertices[LowerY * (XSize + 1) + LowerX + 1].Z;
-	float Height10 = Vertices[(LowerY + 1) * (XSize + 1) + LowerX].Z;
-	float Height11 = Vertices[(LowerY + 1) * (XSize + 1) + LowerX + 1].Z;
-
-	// Interpolate the heights bilinearly
-	float Height0 = FMath::Lerp(Height00, Height01, AlphaX);
-	float Height1 = FMath::Lerp(Height10, Height11, AlphaX);
-	float Height = FMath::Lerp(Height0, Height1, AlphaY);
-
-	return Height;
-}
-
-
 
 //
 // void ABasicProceduralLandscape::SpawnGrass()
@@ -357,9 +343,7 @@ void ABasicProceduralLandscape::UpdateGrassZPosition()
 	{
 		FTransform InstanceTransform;
 		GrassMeshComponent->GetInstanceTransform(i, InstanceTransform, true);
-        
-		// The index i should match with the index of the Vertices array, if the number of grass instances
-		// and the number of vertices are the same.
+		
 		
 		if (Vertices.IsValidIndex(i))
 		{
