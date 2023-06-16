@@ -84,7 +84,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 {
 	
 	//print value of bHasSpawnedGrass to screen
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
+	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("bHasSpawnedGrass: %d"), bHasSpawnedGrass));
 	
 	Super::Tick(DeltaTime);
 	
@@ -112,7 +112,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 		
 	}
 
-	if (!bHasSpawnedGrass)
+	if (!bHasSpawnedGrass|| GrassPositions.IsEmpty())
 	{
 		// Spawn grass the first time
 		GrassPositions.Reset(); //clear old grass positions
