@@ -99,6 +99,7 @@ void ABasicProceduralLandscape::Tick(float DeltaTime)
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 		}
+		
 	else
 	{
 		// Handle case where HeightmapTexture becomes null after being initially not null
