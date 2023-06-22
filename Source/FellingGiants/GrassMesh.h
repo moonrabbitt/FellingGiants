@@ -15,6 +15,9 @@ public:
 	// Sets default values for this actor's properties
 	AGrassMesh();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mesh")
+	UStaticMeshComponent* GrassMeshComponent;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -22,8 +25,7 @@ protected:
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* GrassMesh;
 
-	UPROPERTY(EditAnywhere,Category = "Components")
-	UStaticMeshComponent* GrassMeshComponent;
+	
 
 public:	
 	// Called every frame

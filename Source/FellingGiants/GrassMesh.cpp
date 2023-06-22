@@ -16,13 +16,15 @@ AGrassMesh::AGrassMesh()
 	GrassMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GrassMeshComponent"));
 	RootComponent = GrassMeshComponent;
 
-	// Load a specific mesh
-	auto MeshAsset = ConstructorHelpers::FObjectFinder<UStaticMesh>(TEXT("/Game/Grass"));
 
-	if (MeshAsset.Succeeded())
-	{
-		GrassMeshComponent->SetStaticMesh(MeshAsset.Object);
-	}
+
+	// // Load a specific mesh
+	// auto MeshAsset = ConstructorHelpers::FObjectFinder<UStaticMesh>(TEXT("/Game/Grass/grass.StaticMesh"));
+	//
+	// if (MeshAsset.Succeeded())
+	// {
+	// 	GrassMeshComponent->SetStaticMesh(MeshAsset.Object);
+	// }
 }
 
 // Called when the game starts or when spawned
