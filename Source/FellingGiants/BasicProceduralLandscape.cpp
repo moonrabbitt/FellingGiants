@@ -19,6 +19,7 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 
 	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");//create procedural mesh component
 	ProceduralMesh->SetupAttachment(GetRootComponent()); //attach to root component
+	
 
 	GrassMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("GrassMeshComponent")); //create grass mesh component
 	GrassMeshComponent->SetupAttachment(GetRootComponent()); //attach to root component
@@ -38,6 +39,9 @@ ABasicProceduralLandscape::ABasicProceduralLandscape()
 void ABasicProceduralLandscape::BeginPlay()
 {
 	Super::BeginPlay();
+
+	
+
 	CreateVerticesWithoutHeightMap();
 	CreateTriangles();
 	GetRandomGrassPositions();
@@ -48,6 +52,8 @@ void ABasicProceduralLandscape::BeginPlay()
 void ABasicProceduralLandscape::OnConstruction(const FTransform& Transform)
 {	//No longer need to run game, object loaded on construction script which is exectuted before game begins
 	//Clear old variables on construction
+
+	ProceduralMesh->SetMaterial(0, Material); //set material
 	
 	if (RenderTarget != nullptr) // SpoutSource is the UTextureRenderTarget2D
 		{
