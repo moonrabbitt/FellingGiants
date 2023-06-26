@@ -383,7 +383,7 @@
 #define MEDIAUTILS_API DLLIMPORT
 #define LEVELSEQUENCE_API DLLIMPORT
 #define OWL_AUTH_URL "https://plugin-api.offworld.live"
-#define RELEASE_DATE 2023-06-25T14:40:05.046Z
+#define RELEASE_DATE 2023-06-26T15:40:23.131Z
 #define OFFWORLDLIVE_DEBUG 0
 #define DEBUG_APP_LICENCE 0
 #define AUTH_APP_NAME owl-licensing-utility.exe
